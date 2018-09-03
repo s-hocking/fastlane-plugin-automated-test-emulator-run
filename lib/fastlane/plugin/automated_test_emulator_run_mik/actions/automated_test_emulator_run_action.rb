@@ -303,6 +303,8 @@ module Fastlane
                 launch_status = true
                 break
               end
+            else
+              sleep(1000)
             end
           end
           return launch_status
