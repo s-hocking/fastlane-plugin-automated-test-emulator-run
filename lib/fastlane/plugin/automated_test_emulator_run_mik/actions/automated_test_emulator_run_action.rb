@@ -295,7 +295,7 @@ module Fastlane
                 break
               end
             else
-              sleep(1000)
+              sleep(1)
             end
           end
           return launch_status
@@ -357,6 +357,8 @@ module Fastlane
                 end
               end
               last_scan_ended = Time.now
+            else
+              sleep(1)
             end
          
             # Checking if wait doesn't last too long
