@@ -98,9 +98,8 @@ module Fastlane
             UI.message("Launching all AVDs at the same time.".yellow)
             pids = []
             for i in 0...avd_controllers.length
-              pids << Process.fork do
-                Action.sh(avd_controllers[i].command_start_avd)
-              end
+              UI.command(avd_controllers[i].command_start_avd)
+              pids << Process.spawn(avd_controllers[i].command_start_avd)
             end
 
             # Wait for AVDs finish booting
@@ -210,6 +209,7 @@ module Fastlane
                   Action.sh(cmd)
                 end
                 Action.sh(avd_controllers[i].command_kill_device)
+                Process.kill("INT", pids[i])
               end
 
               if params[:verbose]
@@ -226,11 +226,7 @@ module Fastlane
 
               # Delete AVDs
               if params[:AVD_clean_after]
-                UI.message(["Waiting for ", avd_schemes[i].avd_name, " to finish..."].join("").yellow)
-                begin_waiting = Time.now
                 Process.wait(pids[i])
-                waited = (Time.now - begin_waiting).to_i
-                UI.message(["Finished in ", waited, " seconds"].join("").yellow)
                 UI.message("AVD_clean_after param set to true. Deleting AVDs.".green)
                 Action.sh(avd_controllers[i].command_delete_avd)
               else
