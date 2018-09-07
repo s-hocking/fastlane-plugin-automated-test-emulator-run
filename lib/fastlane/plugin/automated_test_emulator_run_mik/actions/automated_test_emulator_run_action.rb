@@ -78,6 +78,7 @@ module Fastlane
             if params[:ADB_restart]
               UI.message("Restarting adb".yellow)
               Action.sh(adb_controller.command_stop)
+              sleep(2)
               Action.sh(adb_controller.command_start)
             else
               UI.message("ADB won't be restarted. 'ADB_restart' set to false.".yellow)
