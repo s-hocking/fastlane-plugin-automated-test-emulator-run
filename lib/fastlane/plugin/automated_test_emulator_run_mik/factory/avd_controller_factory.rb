@@ -5,7 +5,7 @@ module Fastlane
 
     class AVD_Controller
         attr_accessor :command_install_package, :command_create_avd, :command_start_avd, :command_delete_avd, :command_apply_config_avd, :command_get_property, :command_kill_device,
-                      :output_file
+                      :output_file, :p_file, :port
 
         def self.create_output_file(params)
           output_file = Tempfile.new('emulator_output', '#{params[:AVD_path]}')
@@ -14,7 +14,7 @@ module Fastlane
 
     class AvdControllerFactory
   
-        def self.get_avd_controller(params, avd_scheme)
+        def self.get_avd_controller(params, avd_scheme, port, p_file)
           UI.message(["Preparing parameters and commands for emulator:", avd_scheme.avd_name].join(" ").yellow)
 
           # Get paths
@@ -55,7 +55,7 @@ module Fastlane
           sh_launch_emulator_binary = [path_sdk, "/emulator/", avd_scheme.launch_avd_launch_binary_name].join("")
           sh_launch_avd_name = ["-avd ", avd_scheme.avd_name].join("")
           sh_launch_avd_additional_options = avd_scheme.launch_avd_additional_options
-          sh_launch_avd_port = ["-port", avd_scheme.launch_avd_port].join(" ") 
+          sh_launch_avd_port = ["-port", port].join(" ") 
           
           if avd_scheme.launch_avd_snapshot_filepath.eql? ""
              sh_launch_avd_snapshot = ""
@@ -68,12 +68,14 @@ module Fastlane
 
           # ADB related shell command parts
           sh_specific_device = "-s"
-          sh_device_name_adb = ["emulator-", avd_scheme.launch_avd_port].join("")
+          sh_device_name_adb = ["emulator-", port].join("")
           sh_get_property = "shell getprop"
           sh_kill_device = "emu kill"
 
           # Assemble AVD controller
           avd_controller = AVD_Controller.new
+          avd_controller.p_file=p_file
+          avd_controller.port=port
           avd_controller.command_create_avd = [
             sh_create_answer_no, 
             path_avdmanager_binary,
@@ -90,6 +92,7 @@ module Fastlane
           
           avd_controller.command_start_avd = [
            sh_launch_emulator_binary, 
+           "-read-only",
            sh_launch_avd_port, 
            sh_launch_avd_name, 
            sh_launch_avd_snapshot, 

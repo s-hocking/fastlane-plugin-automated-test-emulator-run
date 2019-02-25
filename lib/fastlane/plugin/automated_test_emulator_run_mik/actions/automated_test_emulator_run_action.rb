@@ -17,7 +17,10 @@ module Fastlane
 
           # Create AVD_Controller class for each AVD_scheme
           for i in 0...avd_schemes.length 
-            avd_controller = Factory::AvdControllerFactory.get_avd_controller(params, avd_schemes[i])
+            port, f_port = generate_free_port()
+            UI.verbose(["Found port:", port].join(" "))
+
+            avd_controller = Factory::AvdControllerFactory.get_avd_controller(params, avd_schemes[i], port, f_port)
             avd_controllers << avd_controller
 
             if params[:verbose] 
@@ -100,13 +103,13 @@ module Fastlane
             pids = []
             for i in 0...avd_controllers.length
               UI.command(avd_controllers[i].command_start_avd)
-              pids << Process.spawn(avd_controllers[i].command_start_avd)
+              pids << Process.spawn(avd_controllers[i].command_start_avd, :chdir=>ENV['HOME'])
             end
 
             # Wait for AVDs finish booting
             UI.message("Waiting for AVDs to finish booting.".yellow)
             UI.message("Performing wait for ADB boot".yellow)
-            adb_launch_complete = wait_for_emulator_boot_by_adb(adb_controller, avd_schemes, "#{params[:AVD_adb_launch_timeout]}")
+            adb_launch_complete = wait_for_emulator_boot_by_adb(adb_controller, avd_controllers, "#{params[:AVD_adb_launch_timeout]}")
 
             # Wait for AVD params finish booting
             if adb_launch_complete
@@ -154,8 +157,8 @@ module Fastlane
             if all_avd_launched
               UI.message("AVDs Booted!".green)
               if params[:logcat]
-                for i in 0...avd_schemes.length
-                  device = ["emulator-", avd_schemes[i].launch_avd_port].join('')
+                for i in 0...avd_controllers.length
+                  device = ["emulator-", avd_controllers[i].port].join('')
                   cmd = [adb_controller.adb_path, '-s', device, 'logcat -c'].join(' ')
                   Action.sh(cmd) unless devices.match(device).nil?
                 end
@@ -171,7 +174,7 @@ module Fastlane
                 end
                 
                 # Killing devices
-                unless devices.match(["emulator-", avd_schemes[i].launch_avd_port].join("")).nil?
+                unless devices.match(["emulator-", avd_controllers[i].port].join("")).nil?
                   Action.sh(avd_controllers[i].command_kill_device)
                   Process.kill("INT", pids[i])
                   Process.wait(pids[i])
@@ -193,7 +196,7 @@ module Fastlane
 
             unless gradle_task.nil?
               gradle = Helper::GradleHelper.new(gradle_path: Dir["./gradlew"].last)
-              serial = avd_schemes.map { |x| "emulator-" + x.launch_avd_port }.join(",")
+              serial = avd_controllers.map { |x| "emulator-" + x.port.to_s }.join(",")
 
               UI.message("Using gradle task.".green)
               gradle.trigger(task: params[:gradle_task], flags: params[:gradle_flags], serial: serial)
@@ -202,7 +205,7 @@ module Fastlane
             # Clean up
             for i in 0...avd_schemes.length
               # Kill all emulators
-              device = ["emulator-", avd_schemes[i].launch_avd_port].join("")
+              device = ["emulator-", avd_controllers[i].port].join("")
               unless devices.match(device).nil?
                 if params[:logcat]
                   file = [device, '.log'].join('')
@@ -237,7 +240,25 @@ module Fastlane
           end
         end
 
-        def self.wait_for_emulator_boot_by_adb(adb_controller, avd_schemes, timeout)
+        def self.generate_free_port()
+          FileUtils.mkdir_p '/tmp/automated_test_emulator_run'
+          for p in (5554..5585).step(2)
+            f = File.open("/tmp/automated_test_emulator_run/#{p}", File::RDWR | File::CREAT)
+            if f.flock(File::LOCK_EX | File::LOCK_NB)
+              return p, f
+            end
+
+            f.close()
+          end
+
+          raise("Error finding free port")
+        end
+
+        def clean_up_port(port, p_file)
+          p_file.flock(File::LOCK_UN)
+        end
+
+        def self.wait_for_emulator_boot_by_adb(adb_controller, avd_controllers, timeout)
           timeoutInSeconds= timeout.to_i
           interval = 1000 * 10
           startTime = Time.now
@@ -245,8 +266,8 @@ module Fastlane
           launch_status_hash = Hash.new
           device_visibility_hash = Hash.new
 
-          for i in 0...avd_schemes.length
-            device_name = ["emulator-", avd_schemes[i].launch_avd_port].join("")
+          for i in 0...avd_controllers.length
+            device_name = ["emulator-", avd_controllers[i].port].join("")
             launch_status_hash.store(device_name, false)
             device_visibility_hash.store(device_name, false)
           end
@@ -350,7 +371,7 @@ module Fastlane
                 device_boot_statuses.store(avd_schema.avd_name, avd_booted)
 
                 # Plotting current wait results
-                device_log = "Device 'emulator-" + avd_schemes[i].launch_avd_port.to_s + "' launch status:"
+                device_log = "Device 'emulator-" + avd_controllers[i].port.to_s + "' launch status:"
                 UI.message(device_log.magenta)
                 avd_param_boot_hash.each do |name, is_booted|
                   device_log = "'" + name + "' - '" + avd_param_status_hash[name].strip + "' (launched: " + is_booted.to_s + ")"
@@ -421,19 +442,19 @@ module Fastlane
           FastlaneCore::ConfigItem.new(key: :AVD_recreate_new,
                                        env_name: "AVD_RECREATE_NEW",
                                        description: "Allow to decide if AVDs from AVD_setup.json (in case they already exist) should be deleted and created from scratch",
-                                       default_value: true,
+                                       default_value: false,
                                        is_string: false,
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :AVD_clean_after,
                                        env_name: "AVD_CLEAN_AFTER",
                                        description: "Allow to decide if AVDs should be deleted from PC after test session ends",
-                                       default_value: true,
+                                       default_value: false,
                                        is_string: false,
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :ADB_restart,
                                        env_name: "ADB_RESTART",
                                        description: "Allows to switch adb restarting on/off",
-                                       default_value: true,
+                                       default_value: false,
                                        is_string: false,
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :AVD_wait_for_bootcomplete,
