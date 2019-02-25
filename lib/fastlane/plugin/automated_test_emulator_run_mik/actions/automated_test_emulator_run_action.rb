@@ -436,7 +436,7 @@ module Fastlane
           FastlaneCore::ConfigItem.new(key: :AVD_adb_launch_timeout,
                                        env_name: "AVD_ADB_LAUNCH_TIMEOUT",
                                        description: "Timeout in seconds. Wait until ADB finds all devices specified in config and sets their value to 'device'. Default 240 seconds",
-                                       default_value: 240,
+                                       default_value: 30,
                                        is_string: true,
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :AVD_recreate_new,
