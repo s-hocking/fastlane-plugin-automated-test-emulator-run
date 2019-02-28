@@ -56,12 +56,6 @@ module Fastlane
           sh_launch_avd_name = ["-avd ", avd_scheme.avd_name].join("")
           sh_launch_avd_additional_options = avd_scheme.launch_avd_additional_options
           sh_launch_avd_port = ["-port", port].join(" ") 
-          
-          if avd_scheme.launch_avd_snapshot_filepath.eql? ""
-             sh_launch_avd_snapshot = ""
-          else
-             sh_launch_avd_snapshot = ["-wipe-data -initdata ", avd_scheme.launch_avd_snapshot_filepath].join("")
-          end   
 
           # Re-create AVD shell command parts
           sh_delete_avd = ["delete avd -n ", avd_scheme.avd_name].join("")
@@ -95,7 +89,6 @@ module Fastlane
            "-read-only",
            sh_launch_avd_port, 
            sh_launch_avd_name, 
-           sh_launch_avd_snapshot, 
            sh_launch_avd_additional_options].join(" ")
 
           avd_controller.command_delete_avd = [

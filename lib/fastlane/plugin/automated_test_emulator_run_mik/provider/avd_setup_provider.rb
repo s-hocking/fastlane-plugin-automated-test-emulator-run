@@ -3,7 +3,7 @@ module Fastlane
 
     class AVD_scheme
       attr_accessor :avd_name, :create_avd_package, :create_avd_device, :create_avd_tag, :create_avd_abi, :create_avd_hardware_config_filepath, :create_avd_additional_options, 
-                    :launch_avd_launch_binary_name, :launch_avd_additional_options, :launch_avd_snapshot_filepath
+                    :launch_avd_launch_binary_name, :launch_avd_additional_options
     end
 
     class AvdSchemeProvider
@@ -36,7 +36,6 @@ module Fastlane
 
             avd_scheme.launch_avd_launch_binary_name = avd_hash['launch_avd_launch_binary_name']
             avd_scheme.launch_avd_additional_options = avd_hash['launch_avd_additional_options']
-            avd_scheme.launch_avd_snapshot_filepath = avd_hash['launch_avd_snapshot_filepath']
 
             errors = check_avd_fields(avd_scheme)
             unless errors.empty?
@@ -82,9 +81,6 @@ module Fastlane
           end
           if avd_scheme.create_avd_hardware_config_filepath.nil? 
               errors.push("create_avd_hardware_config_filepath not found")
-          end
-          if avd_scheme.launch_avd_snapshot_filepath.nil? 
-              errors.push("launch_avd_snapshot_filepath not found")
           end
           if avd_scheme.launch_avd_launch_binary_name.nil?
             errors.push("launch_avd_launch_binary_name not found")
