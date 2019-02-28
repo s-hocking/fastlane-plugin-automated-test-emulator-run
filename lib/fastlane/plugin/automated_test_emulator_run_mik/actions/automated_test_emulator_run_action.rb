@@ -156,6 +156,14 @@ module Fastlane
             
             if all_avd_launched
               UI.message("AVDs Booted!".green)
+
+              UI.message("Setting screen_off_timeout!".green)
+              for i in 0...avd_controllers.length
+                device = ["emulator-", avd_controllers[i].port].join('')
+                cmd = [adb_controller.adb_path, '-s', device, 'shell settings put system screen_off_timeout 2147483647'].join(' ')
+                Action.sh(cmd) unless devices.match(device).nil?
+              end
+
               if params[:logcat]
                 for i in 0...avd_controllers.length
                   device = ["emulator-", avd_controllers[i].port].join('')
